@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Propuesta de Videovigilancia - Plano Interactivo</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: #ffffff;
+            color: #0D3256;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .header h1 {
+            font-size: 26px;
+            color: #0D3256;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .header p {
+            font-size: 15px;
+            color: #107B8A;
+            margin-top: 6px;
+            font-weight: 500;
+        }
+
+        /* Map Container */
+        .map-wrapper {
+            position: relative;
+            width: 850px;
+            max-width: 95vw;
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(13, 50, 86, 0.15);
+            border: 2px solid #0D3256;
+            overflow: visible;
+        }
+
+        .map-img {
+            width: 100%;
+            height: auto;
+            display: block;
+            border-radius: 10px;
+        }
+
+        /* Camera Hotspots */
+        .camera-node {
+            position: absolute;
+            width: 32px;
+            height: 32px;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            z-index: 20;
+            transition: z-index 0s;
+        }
+
+        /* Hovered node and popup appear above all others */
+        .camera-node:hover {
+            z-index: 999 !important;
+        }
+
+        /* Pulse Animation */
+        .camera-node::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(16, 123, 138, 0.4);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            70% { transform: scale(1.7); opacity: 0; }
+            100% { transform: scale(0.95); opacity: 0; }
+        }
+
+        .camera-icon {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background: #0D3256;
+            border: 2px solid #107B8A;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+        }
+
+        .camera-node:hover .camera-icon {
+            background: #107B8A;
+            transform: scale(1.2);
+            border-color: #0D3256;
+        }
+
+        .camera-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        /* Pop-up Overlay Card */
+        .camera-popup {
+            position: absolute;
+            width: 380px;
+            background: #ffffff;
+            border: 2px solid #0D3256;
+            border-radius: 12px;
+            padding: 14px;
+            box-shadow: 0 12px 32px rgba(13, 50, 86, 0.35);
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+        }
+
+        /* Directional orientations for popup */
+        .popup-top {
+            bottom: 42px;
+            left: 50%;
+            transform: translateX(-50%) translateY(10px);
+        }
+        .camera-node:hover .popup-top {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .popup-bottom {
+            top: 42px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-10px);
+        }
+        .camera-node:hover .popup-bottom {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .popup-right {
+            top: 50%;
+            left: 42px;
+            transform: translateY(-50%) translateX(-10px);
+        }
+        .camera-node:hover .popup-right {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(-50%) translateX(0);
+        }
+
+        /* Popup Content Styling */
+        .popup-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            border-bottom: 2px solid #107B8A;
+            padding-bottom: 8px;
+        }
+
+        .popup-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #0D3256;
+            text-transform: uppercase;
+        }
+
+        .popup-tag {
+            font-size: 11px;
+            background: #107B8A;
+            color: #ffffff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .popup-image-container {
+            width: 100%;
+            height: 240px;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #f1f5f9;
+            margin-bottom: 10px;
+            border: 1px solid #cbd5e1;
+            position: relative;
+        }
+
+        .popup-image-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .popup-details {
+            font-size: 12px;
+            color: #334155;
+            line-height: 1.6;
+        }
+
+        .popup-details p {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+
+        .popup-details span.label {
+            color: #0D3256;
+            font-weight: 600;
+        }
+
+        .popup-details span.val {
+            color: #475569;
+        }
+
+        /* Coordinates mapped to Plano camaras.png */
+        #cam-1 { top: 24.5%; left: 22%; }
+        #cam-2 { top: 12.5%; left: 28.5%; }
+        #cam-3 { top: 16%; left: 35%; }
+        #cam-4 { top: 16%; left: 39.5%; }
+        #cam-5 { top: 22.5%; left: 48.5%; }
+        #cam-6 { top: 81.5%; left: 40.5%; }
+        #cam-7 { top: 81.5%; left: 49.5%; }
+        #cam-8 { top: 64%; left: 12.5%; }
+        #cam-9 { top: 35%; left: 14.5%; }
+
+        .footer-note {
+            margin-top: 20px;
+            font-size: 13px;
+            color: #0D3256;
+            background: #f0f7f9;
+            padding: 10px 18px;
+            border-radius: 8px;
+            border-left: 4px solid #107B8A;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Plano Interactivo de Cobertura de Cámaras</h1>
+        <p>Pasa el cursor sobre cada cámara para previsualizar la escena esperada</p>
+    </div>
+
+    <div class="map-wrapper">
+        <!-- Imagen del Plano de Fondo -->
+        <img src="Plano camaras.png" alt="Plano de Ubicación de Cámaras" class="map-img">
+
+        <!-- CÁMARA 1 -->
+        <div class="camera-node" id="cam-1">
+            <div class="camera-icon"><span class="camera-label">C1</span></div>
+            <div class="camera-popup popup-bottom">
+                <div class="popup-header">
+                    <span class="popup-title">Cámara 01</span>
+                    <span class="popup-tag">DS-2CD3643G2-LIZSU</span>
+                </div>
+                <div class="popup-image-container">
+                    <img src="Escena Camara 1.jpg" alt="Escena Cámara 1">
+                </div>
+                <div class="popup-details">
+                    <p><span class="label">Resolución:</span> <span class="val">4 MP (2560 × 1440)</span></p>
+                    <p><span class="label">Lente:</span> <span class="val">Varifocal Motorizado 2.8 - 12 mm</span></p>
+                    <p><span class="label">Tecnología:</span> <span class="val">Smart Hybrid Light / AcuSense</span></p>
+                    <p><span class="label">Protección:</span> <span class="val">IP67 / IK10 Anti-vándalo</span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- CÁMARA 2 -->
+        <div class="camera-node" id="cam-2">
+            <div class="camera-icon"><span class="camera-label">C2</span></div>
+            <div class="camera-popup popup-bottom">
+                <div class="popup-header">
+                    <span class="popup-title">Cámara 02</span>
+                    <span class="popup-tag">DS-2CD3643G2-LIZSU</span>
+                </div>
+                <div class="popup-image-container">
+                    <img src="Escena Camara 2.jpg" alt="Escena Cámara 2">
+                </div>
+                <div class="popup-details">
+                    <p><span class="label">Resolución:</span> <span class="val">4 MP (2560 × 1440)</span></p>
+                    <p><span class="label">Lente:</span> <span class="val">Varifocal Motorizado 2.8 - 12 mm</span></p>
+                    <p><span class="label">Tecnología:</span> <span class="val">Smart Hybrid Light / AcuSense</span></p>
+                    <p><span class="label">Protección:</span> <span class="val">IP67 / IK10 Anti-vándalo</span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- CÁMARA 3 -->
+        <div class="camera-node" id="cam-3">
+            <div class="camera-icon"><span class="camera-label">C3</span></div>
+            <div class="camera-popup popup-bottom">
+                <div class="popup-header">
+                    <span class="popup-title">Cámara 03</span>
+                    <span class="popup-tag">DS-2CD3643G2-LIZSU</span>
+                </div>
+                <div class="popup-image-container">
+                    <img src="Escena Camara 3.jpg" alt="Escena Cámara 3">
+                </div>
+                <div class="popup-details">
+                    <p><span class="label">Resolución:</span> <span class="val">4 MP (2560 × 1440)</span></p>
+                    <p><span class="label">Lente:</span> <span class="val">Varifocal Motorizado 2.8 - 12 mm</span></p>
+                    <p><span class="label">Tecnología:</span> <span class="val">Smart Hybrid Light / AcuSense</span></p>
+                    <p><span class="label">Protección:</span> <span class="val">IP67 / IK10 Anti-vándalo</span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- CÁMARA 4 -->
+        <div class="camera-node" id="cam-4">
+            <div class="camera-icon"><span class="camera-label">C4</span></div>
+            <div class="camera-popup popup-bottom">
+                <div class="popup-header">
+                    <span class="popup-title">Cámara 04</span>
+                    <span class="popup-tag">DS-2CD3643G2-LIZSU</span>
+                </div>
+                <div class="popup-image-container">
+                    <img src="Escena Camara 4.jpg" alt="Escena Cámara 4">
+                </div>
+                <div class="popup-details">
+                    <p><span class="label">Resolución:</span> <span class="val">4 MP (2560 × 1440)</span></p>
+                    <p><span class="label">Lente:</span> <span class="val">Varifocal Motorizado 2.8 - 12 mm</span></p>
+                    <p><span class="label">Tecnología:</span> <span class="val">Smart Hybrid Light / AcuSense</span></p>
+                    <p><span class="label">Protección:</span> <span class="val">IP67 / IK10 Anti-vándalo</span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- CÁMARA 5 -->
+        <div class="camera-node" id="cam-5">
+            <div class="camera-icon"><span class="camera-label">C5</span></div>
+            <div class="camera-popup popup-bottom">
+                <div class="popup-header">
+                    <span class="popup-title">Cámara 05</span>
+                    <span class="popup-tag">DS-2CD3643G2-LIZSU</span>
+                </div>
+                <div class="popup-image-container">
+                    <img src="Escena Camara 5.jpg" alt="Escena Cámara 5">
+                </div>
+                <div class="popup-details">
+                    <p><span class="label">Resolución:</span> <span class="val">4 MP (2560 × 1440)</span></p>
+                    <p><span class="label">Lente:</span> <span class="val">Varifocal Motorizado 2.8 - 12 mm</span></p>
+                    <p><span class="label">Tecnología:</span> <span class="val">Smart Hybrid Light / AcuSense</span></p>
+                    <p><span class="label">Protección:</span> <span class="val">IP67 / IK10 Anti-vándalo</span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- CÁMARA 6 -->
+        <div class="camera-node" id="cam-6">
+            <div class="camera-icon"><span class="camera-label">C6</span></div>
+            <div class="camera-popup popup-top">
+                <div class="popup-header">
+                    <span class="popup-title">Cámara 06</span>
+                    <span class="popup-tag">DS-2CD3643G2-LIZSU</span>
+                </div>
+                <div class="popup-image-container">
+                    <img src="Escena Camara 6.jpg" alt="Escena Cámara 6">
+                </div>
+                <div class="popup-details">
+                    <p><span class="label">Resolución:</span> <span class="val">4 MP (2560 × 1440)</span></p>
+                    <p><span class="label">Lente:</span> <span class="val">Varifocal Motorizado 2.8 - 12 mm</span></p>
+                    <p><span class="label">Tecnología:</span> <span class="val">Smart Hybrid Light / AcuSense</span></p>
+                    <p><span class="label">Protección:</span> <span class="val">IP67 / IK10 Anti-vándalo</span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- CÁMARA 7 -->
+        <div class="camera-node" id="cam-7">
+            <div class="camera-icon"><span class="camera-label">C7</span></div>
+            <div class="camera-popup popup-top">
+                <div class="popup-header">
+                    <span class="popup-title">Cámara 07</span>
+                    <span class="popup-tag">DS-2CD3643G2-LIZSU</span>
+                </div>
+                <div class="popup-image-container">
+                    <img src="Escena Camara 7.jpg" alt="Escena Cámara 7">
+                </div>
+                <div class="popup-details">
+                    <p><span class="label">Resolución:</span> <span class="val">4 MP (2560 × 1440)</span></p>
+                    <p><span class="label">Lente:</span> <span class="val">Varifocal Motorizado 2.8 - 12 mm</span></p>
+                    <p><span class="label">Tecnología:</span> <span class="val">Smart Hybrid Light / AcuSense</span></p>
+                    <p><span class="label">Protección:</span> <span class="val">IP67 / IK10 Anti-vándalo</span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- CÁMARA 8 -->
+        <div class="camera-node" id="cam-8">
+            <div class="camera-icon"><span class="camera-label">C8</span></div>
+            <div class="camera-popup popup-right">
+                <div class="popup-header">
+                    <span class="popup-title">Cámara 08</span>
+                    <span class="popup-tag">DS-2CD3643G2-LIZSU</span>
+                </div>
+                <div class="popup-image-container">
+                    <img src="Escena Camara 8.jpg" alt="Escena Cámara 8">
+                </div>
+                <div class="popup-details">
+                    <p><span class="label">Resolución:</span> <span class="val">4 MP (2560 × 1440)</span></p>
+                    <p><span class="label">Lente:</span> <span class="val">Varifocal Motorizado 2.8 - 12 mm</span></p>
+                    <p><span class="label">Tecnología:</span> <span class="val">Smart Hybrid Light / AcuSense</span></p>
+                    <p><span class="label">Protección:</span> <span class="val">IP67 / IK10 Anti-vándalo</span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- CÁMARA 9 -->
+        <div class="camera-node" id="cam-9">
+            <div class="camera-icon"><span class="camera-label">C9</span></div>
+            <div class="camera-popup popup-right">
+                <div class="popup-header">
+                    <span class="popup-title">Cámara 09</span>
+                    <span class="popup-tag">DS-2CD3643G2-LIZSU</span>
+                </div>
+                <div class="popup-image-container">
+                    <img src="Escena Camara 9.jpg" alt="Escena Cámara 9">
+                </div>
+                <div class="popup-details">
+                    <p><span class="label">Resolución:</span> <span class="val">4 MP (2560 × 1440)</span></p>
+                    <p><span class="label">Lente:</span> <span class="val">Varifocal Motorizado 2.8 - 12 mm</span></p>
+                    <p><span class="label">Tecnología:</span> <span class="val">Smart Hybrid Light / AcuSense</span></p>
+                    <p><span class="label">Protección:</span> <span class="val">IP67 / IK10 Anti-vándalo</span></p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="footer-note">
+        📷 <strong>Especificación Técnica General:</strong> Hikvision DS-2CD3643G2-LIZSU — Cámara Bullet IP Varifocal de 4MP con Smart Hybrid Light y Clasificación de Humanos/Vehículos (AcuSense).
+    </div>
+
+</body>
+</html>
